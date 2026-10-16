@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Customer Dashboard - Banking Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .custom-card {
+            border: none;
+            border-radius: 1.25rem;
+            transition: all 0.2s ease-in-out;
+        }
+        .promo-card {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 1.25rem;
+        }
+        .eligibility-status {
+            font-size: 0.85rem;
+            border-radius: 0.5rem;
+            padding: 0.4rem 0.75rem;
+            display: inline-block;
+        }
+    </style>
+</head>
+<body class="bg-light">
+
+<!-- Navbar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary shadow-sm mb-4">
+    <div class="container">
+        <span class="navbar-brand fw-bold d-flex align-items-center gap-2">
+            <span>🏦</span> Apex Bank | Welcome, <span th:text="${username}"></span>
+        </span>
+        <div class="d-flex align-items-center gap-3">
+            <span class="badge bg-white bg-opacity-25 text-white px-3 py-2 rounded-pill">Customer Portal</span>
+            <a href="/logout" class="btn btn-outline-light btn-sm rounded-pill px-3">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container pb-5">
+    <!-- Success Feedback -->
+    <div th:if="${param.success}" class="alert alert-success alert-dismissible fade show shadow-sm rounded-3 mb-4">
+        ✅ <strong>Application submitted successfully!</strong> Your loan request is now pending review.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Error Feedback -->
+    <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show shadow-sm rounded-3 mb-4">
+        ⚠️ <strong>Eligibility Notice:</strong> <span th:text="${param.error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    
+    <div class="row g-4">
+        <!-- CUSTOM LOAN APPLICATION -->
+        <div class="col-lg-7">
+            <div class="card shadow-sm custom-card bg-white p-4 p-md-5">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h3 class="fw-bold mb-0">Apply for a Loan</h3>
+                    <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill fw-semibold">Custom Loan</span>
+                </div>
+                <p class="text-muted small mb-4">Enter your financial profile below. Repayment plans unlock automatically based on your criteria.</p>
+                
+                <form action="/customer/apply" method="post" id="loanForm">
+                    <!-- Loan Product Type -->
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold text-secondary">Loan Product Type</label>
+                        <select name="type" class="form-select form-select-lg">
+                            <option value="Salaried">Salaried Personal Loan</option>
+                            <option value="SelfEmployed">Self-Employed Business Loan</option>
+                        </select>
+                    </div>
+
+                    <!-- Criteria Inputs -->
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary">CIBIL / Credit Score</label>
+                            <input type="number" id="creditScoreInput" name="creditScore" class="form-control form-control-lg" value="760" min="300" max="900" required>
+                            <div class="form-text">Min 600 required. (750+ unlocks Privilege)</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary">Monthly Net Income (₹)</label>
+                            <input type="number" id="monthlyIncomeInput" name="monthlyIncome" class="form-control form-control-lg" value="85000" min="10000" step="5000" required>
+                            <div class="form-text">Used for risk & rate calculation</div>
+                        </div>
+                    </div>
+
+                    <!-- Pricing & Repayment Strategy -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label fw-semibold text-secondary mb-0">Repayment & Pricing Plan</label>
+                            <div id="privilegeBadge" class="eligibility-status bg-success-subtle text-success">
+                                ✓ Privilege Plan Unlocked
+                            </div>
+                        </div>
+                        <select id="strategySelect" name="strategy" class="form-select form-select-lg">
+                            <option value="Standard">Standard Fixed Plan (10.5% p.a.)</option>
+                            <option id="privilegeOption" value="Privilege">⭐ Privilege Reducing Plan (8.5% p.a. - Discounted)</option>
+                            <option value="Festive">🎉 Festive Promo Plan (7.5% Zero Processing Fee)</option>
+                        </select>
+                        <div id="strategyNotice" class="form-text text-muted mt-1">
+                            Privilege Plan automatically unlocks when CIBIL ≥ 750 and Monthly Income ≥ ₹50,000.
+                        </div>
+                    </div>
+
+                    <!-- Loan Amount -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold text-secondary">Amount Requested (₹)</label>
+                        <input type="number" name="amount" class="form-control form-control-lg" value="300000" min="10000" step="5000" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill shadow-sm fw-semibold">
+                        Submit Application
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- PRE-APPROVED INSTANT OFFER -->
+        <div class="col-lg-5">
+            <div class="card shadow-sm promo-card text-white p-4 p-md-5 h-100 d-flex flex-column justify-content-between">
+                <div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold">PRE-APPROVED</span>
+                        <span class="text-white-50 small">Instant Approval</span>
+                    </div>
+                    <h5 class="text-warning text-uppercase mb-1">Diwali Festive Scheme</h5>
+                    <h1 class="display-3 fw-bold my-3 text-white">₹45,000</h1>
+                    <p class="text-light mb-3">
+                        Fast-track disbursed at our lowest <strong>7.5% promotional rate</strong> with zero documentation delays.
+                    </p>
+                    <ul class="list-unstyled text-white-50 small mb-4">
+                        <li class="mb-2">✓ Pre-verified CIBIL rating (780+)</li>
+                        <li class="mb-2">✓ No physical verification required</li>
+                        <li>✓ 24-month flexible EMI</li>
+                    </ul>
+                </div>
+
+                <form action="/customer/quick-apply" method="post" class="mt-4">
+                    <button type="submit" class="btn btn-warning btn-lg w-100 fw-bold rounded-pill shadow">
+                        ⚡ 1-Click Fast Apply
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dynamic Eligibility Script -->
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const scoreInput = document.getElementById("creditScoreInput");
+        const incomeInput = document.getElementById("monthlyIncomeInput");
+        const strategySelect = document.getElementById("strategySelect");
+        const privilegeOption = document.getElementById("privilegeOption");
+        const privilegeBadge = document.getElementById("privilegeBadge");
+        const strategyNotice = document.getElementById("strategyNotice");
+
+        function updatePrivilegeEligibility() {
+            const score = parseInt(scoreInput.value) || 0;
+            const income = parseFloat(incomeInput.value) || 0;
+
+            const isEligible = score >= 750 && income >= 50000;
+
+            if (isEligible) {
+                privilegeOption.disabled = false;
+                privilegeOption.textContent = "⭐ Privilege Reducing Plan (8.5% p.a. - Unlocked)";
+                privilegeBadge.className = "eligibility-status bg-success-subtle text-success border border-success-subtle";
+                privilegeBadge.innerHTML = "✓ Privilege Plan Unlocked";
+                strategyNotice.textContent = "Great credit profile! Privilege Plan (8.5%) is available.";
+            } else {
+                privilegeOption.disabled = true;
+                privilegeOption.textContent = "🔒 Privilege Plan (Requires CIBIL ≥ 750 & ₹50k Income)";
+                privilegeBadge.className = "eligibility-status bg-secondary-subtle text-muted border border-secondary-subtle";
+                privilegeBadge.innerHTML = "🔒 Privilege Plan Locked";
+                strategyNotice.textContent = "To unlock Privilege Plan (8.5%), CIBIL must be ≥ 750 and Monthly Income ≥ ₹50,000.";
+
+                // If currently selected, fallback to standard plan
+                if (strategySelect.value === "Privilege") {
+                    strategySelect.value = "Standard";
+                }
+            }
+        }
+
+        scoreInput.addEventListener("input", updatePrivilegeEligibility);
+        incomeInput.addEventListener("input", updatePrivilegeEligibility);
+
+        // Run once on load
+        updatePrivilegeEligibility();
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

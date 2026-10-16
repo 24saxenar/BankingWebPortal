@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Employee Portal - Loan Queue & Approvals</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<nav class="navbar navbar-dark bg-dark shadow-sm mb-4">
+    <div class="container">
+        <span class="navbar-brand fw-bold">
+            👔 Apex Bank | Employee Portal | <span class="text-warning" th:text="${role}"></span>
+        </span>
+        <div class="d-flex align-items-center gap-2">
+            <!-- Undo button -->
+            <form action="/employee/undo" method="post" class="m-0" th:if="${canUndo}">
+                <button type="submit" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold shadow-sm">
+                    ↺ Undo Last Action
+                </button>
+            </form>
+            <a href="/logout" class="btn btn-outline-light btn-sm rounded-pill px-3">Logout</a>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4 pb-5">
+    <!-- Action Alerts -->
+    <div th:if="${param.approved}" class="alert alert-success alert-dismissible fade show shadow-sm rounded-3">
+        ✅ <strong>Application Approved!</strong> Handled via approval chain and audit notification sent.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${param.rejected}" class="alert alert-danger alert-dismissible fade show shadow-sm rounded-3">
+        ❌ <strong>Application Rejected!</strong> Loan status updated to <code>REJECTED</code>.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${param.undone}" class="alert alert-warning alert-dismissible fade show shadow-sm rounded-3">
+        ⏪ <strong>Rollback Successful!</strong> State was successfully restored from snapshot history back to <code>PENDING</code>.
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${param.error}" class="alert alert-danger alert-dismissible fade show shadow-sm rounded-3">
+        ⚠️ <span th:text="${param.error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Active Pending Applications Queue -->
+    <div class="card shadow border-0 rounded-4 overflow-hidden mb-5">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold">Pending Loan Applications Queue</h5>
+            <span class="badge bg-primary rounded-pill px-3 py-2" th:text="${#lists.size(loans)} + ' Pending'"></span>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                <tr>
+                    <th class="ps-4">ID</th>
+                    <th>Customer</th>
+                    <th>Product Type</th>
+                    <th>Customer Criteria</th>
+                    <th>Amount</th>
+                    <th>Pricing Strategy</th>
+                    <th>Est. EMI</th>
+                    <th>Risk Score</th>
+                    <th class="pe-4 text-end">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="loan : ${loans}">
+                    <td class="ps-4 fw-bold" th:text="'#' + ${loan.id}"></td>
+                    <td class="fw-semibold" th:text="${loan.customerName}"></td>
+                    <td th:text="${loan.loanType}"></td>
+                    <td>
+                        <small class="d-block">CIBIL: <strong th:text="${loan.creditScore}"></strong></small>
+                        <small class="text-muted" th:text="'Income: ' + ${loan.formattedIncome}"></small>
+                    </td>
+                    <td class="text-primary fw-bold" th:text="${loan.formattedAmount}"></td>
+                    <td>
+                        <span class="badge bg-info text-dark" th:text="${loan.strategyName} + ' (' + ${loan.interestRate} + '%)'"></span>
+                    </td>
+                    <td class="text-success fw-bold" th:text="${loan.formattedEmi} + '/mo'"></td>
+                    <td>
+                        <span class="badge bg-secondary p-2" th:text="${loan.score} + ' / 900'"></span>
+                    </td>
+                    <td class="pe-4 text-end">
+                        <div class="d-inline-flex gap-2">
+                            <!-- APPROVE -->
+                            <form action="/employee/approve" method="post" class="m-0">
+                                <input type="hidden" name="loanId" th:value="${loan.id}">
+                                <input type="hidden" name="amount" th:value="${loan.amount}">
+                                <button type="submit" class="btn btn-success btn-sm px-3 rounded-pill shadow-sm">
+                                    Approve / Escalate
+                                </button>
+                            </form>
+                            <!-- REJECT -->
+                            <form action="/employee/reject" method="post" class="m-0">
+                                <input type="hidden" name="loanId" th:value="${loan.id}">
+                                <button type="submit" class="btn btn-outline-danger btn-sm px-3 rounded-pill shadow-sm">
+                                    Reject
+                                </button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(loans)}">
+                    <td colspan="9" class="text-center py-5 text-muted">
+                        <p class="mb-1 fs-5">🎉 Queue Clear!</p>
+                        <small>No pending loan applications waiting for review.</small>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Recently Decided Applications History -->
+    <div class="card shadow-sm border-0 rounded-4 overflow-hidden" th:if="${!#lists.isEmpty(processedLoans)}">
+        <div class="card-header bg-white py-3">
+            <h6 class="mb-0 fw-bold text-muted text-uppercase letter-spacing-1">Recently Decided Applications History</h6>
+        </div>
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0 text-muted">
+                <thead class="table-light">
+                <tr>
+                    <th class="ps-4">ID</th>
+                    <th>Customer</th>
+                    <th>Type</th>
+                    <th>Amount</th>
+                    <th>Strategy</th>
+                    <th>Decision Status</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="pLoan : ${processedLoans}">
+                    <td class="ps-4" th:text="'#' + ${pLoan.id}"></td>
+                    <td th:text="${pLoan.customerName}"></td>
+                    <td th:text="${pLoan.loanType}"></td>
+                    <td th:text="${pLoan.formattedAmount}"></td>
+                    <td th:text="${pLoan.strategyName}"></td>
+                    <td>
+                        <span th:if="${pLoan.status == 'APPROVED'}" class="badge bg-success-subtle text-success border border-success-subtle px-3 py-1 rounded-pill">
+                            APPROVED
+                        </span>
+                        <span th:if="${pLoan.status == 'REJECTED'}" class="badge bg-danger-subtle text-danger border border-danger-subtle px-3 py-1 rounded-pill">
+                            REJECTED
+                        </span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
